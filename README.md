@@ -1,5 +1,8 @@
 # Binance Trader Bot
+
 **Trade crypto like pro 24/7 whether you're working, resting or playing.**
+
+<img src="https://github.com/idiydownunder/binance-trader-bot/blob/main/Resources/BTB_Screen_Shot_01.png?raw=true">
 
 ### Introduction
  This project came about as I wanted my crypto holdings to work harder for me than simply staking it. I looked around a little (not very much at all, if I'm honest) and couldn't really find one that I liked. I really didn't like the way I'd have to set and watch prices for trading pairs or the way others only did one trading pair at a time, monthly subscriptions, etc, etc. I just wanted a bot that was simple to use and capable of multiple trading pairs.
@@ -249,7 +252,57 @@ This section sets the KLINE Time Frame, to change this simply comment out the li
 
 *Before You Bother: The API Key shown here was deleted after compiling this section, it will not work!. The IP address shown here is not mine! I made it up for demo purposes!*
 
+### Persistence (Terminal)
+
+This is great and all, but the bot stops as soon as I close my terminal and I don't want to have it open 24/7, I hear you say. Relax, if you have been following along we actually installed a program called screen during the Installation section. Just in case you didn't you can install it now with the following command.
+
+```BASH
+sudo apt install screen -y
+```
+The screen program creates terminal instances we can attach and detach to while keeping whatever program that's running in it active. To start a new terminal instance with screen we use the following command syntax;<br>*screen -S &#60;instance name&#62;*<br>we can use the following command syntax to reconnect to an instance with;<br>*screen -r &#60;instance name&#62;*<br>And we can see a list of running instances with the syntax;<br>*screen -ls*<br>when we are connected to a running instance we can detach from it by pressing *ctrl* + *a* then press *ctrl* + *d*
+
+Let's start a screen instance for our bot with the following command;
+
+```BASH
+screen -S binance-trader
+```
+
+Now navigate to the bot directory and run the bot just like before;
+
+```BASH
+python3 traderbot.py
+```
+
+Let's detach by pressing *ctrl* + *a* then pressing *ctrl* + *d*
+
+Now check to see that we did detach properly;
+
+```BASH
+screen -ls
+```
+Let's check on our bot by reconnecting;
+
+```BASH
+screen -r binance-trader
+```
+
+### Persistence (System Startup)
+
+To have this bot run every time the system is started or rebooted, I recommend making a cron job. To do this simply enter the following command in your terminal;
+
+```BASH
+crontab -e
+```
+
+If this is your first time creating a cron job you will be asked to select a text editor, pick whichever you feel comfortable with. If you're new just go with nano as directions from here will be with nano. Once the crontab opens in the chosen editor simply copy the following code and paste it in as the last line;
+
+```BASH
+@reboot screen -dmS binance-trader python3 /home/pi/binance-trader-bot/traderbot.py
+```
+Just remember to change the */home/pi/binance-trader-bot/traderbot.py* to the location of the bot on your system. Now press *ctrl* + *x* to exit, confirm the changes by pressing *y* and write the output by pressing *'Enter'*. Now the bot should start automatically every time the computer is restarted.
+
 ### Donate
+
 While developing things like this are a passion and hobby for me. I ask that if you have found this educational, helpful, insiteful or maybe you've even made a few dollars out of this bot, maybe you could consider making a donation to the project. To help fund future development costs, mainly my time and coffee.
 
 Cash donations can be made through my [PayPal.Me](https://www.paypal.com/paypalme/carmichaeljuian) link.
@@ -257,3 +310,5 @@ Cash donations can be made through my [PayPal.Me](https://www.paypal.com/paypalm
 Crypto donations can be made to the following wallets;<br>
 Bitcoin (BTC): 1Kt78m7LPZkkfxyMx8rVcdJxBftZw937Sc<br>
 Monero (XMR): 4BAco3fES2cXfymfx7NVd62Z6EfgXNvaZg3tba8jWjvHR52cHDbmkiT5iEm3Kxq4XhbCeFEacCJzkBYtHpXwwGbJ2d7FWwr<br>
+
+<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons Licence" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.

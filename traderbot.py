@@ -1,5 +1,16 @@
 #!/bin/python3
 
+#=====================================================================
+#
+#  Copyright (c) 2023 iDIY Down Under
+#  Author: Julian Carmichael (aka Digital Jester)
+#
+#  This work is licensed under a Creative Commons 
+#  Attribution-NonCommercial-ShareAlike 4.0 International License
+#  http://creativecommons.org/licenses/by-nc-sa/4.0/
+#
+#=====================================================================
+
 #=============================================
 # Import Libaries
 #=============================================
@@ -196,11 +207,11 @@ while True:
                 if tp['trade_buy_price_adjustment']!=0:
                     buy_price = round(sma_long - tp['trade_buy_price_adjustment'],4)
                 else:
-                    buy_price = sma_short
+                    buy_price = sma_short-0.0001
                 if tp['trade_sell_price_adjustment']!=0:
                     sell_price = round(sma_long + tp['trade_sell_price_adjustment'],4)
                 else:
-                    sell_price=sma_short
+                    sell_price=sma_short+0.0001
                 # Make adjustment for Price Guard if enabled.    
                 if tp['trade_price_guard']:
                     g_price=price_guard.get(symbol, None)
@@ -365,7 +376,7 @@ while True:
                             holdings+=get_timestamp_string() + Fore.BLACK + Back.YELLOW + f"[BAL]" + Style.RESET_ALL + f" {tp['coin']} {coin_balance['free']}\n"
 
                 # Print the output
-                print(holdings)
+                print(holdings.rstrip("\n"))
 
     #=============================================
     # Exception/Error Handling
