@@ -74,6 +74,7 @@ This is what a basic default config.json file looks like;
 {
     "api_key":"<your-api-key>",
     "api_secert_key":"<your-api-secert-key>",
+    "tld":"com",
     "sma_short_period":7,
     "sma_medium_period":25,
     "sma_long_period":99,
@@ -130,6 +131,8 @@ This is what a basic default config.json file looks like;
 }
 ```
 **api_key & api_secert_key** You need to replace *&#60;your-api-key&#62;* and *&#60;your-api-secert-key&#62;* with your API Key and Secret Key respectively. These are provided from Binance and need to be set in order for the bot to be able to trade. See Getting API Keys for more information.
+
+**tld** If you are interacting with a regional version of Binance which has a different Top Level Domain then you will need to pass this when using the bot for it to work properly, for example if the website you login to is 'binance.com' you would set this to 'com' or if you use 'binance.us' you would set this to 'us'.
 
 **sma_short_period, sma_medium_period & sma_long_period** These values represent the number of days used when calculating the moving average price's. I do not recommend changing these values unless you are a more advanced trader looking to adjust the trading strategy to better suit your trading strategy.
 

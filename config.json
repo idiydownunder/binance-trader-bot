@@ -1,6 +1,7 @@
 {
     "api_key":"<your-api-key>",
     "api_secert_key":"<your-api-secert-key>",
+    "tld":"com",
     "sma_short_period":7,
     "sma_medium_period":25,
     "sma_long_period":99,

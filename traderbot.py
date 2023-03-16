@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/python3
 
 #=====================================================================
 #
@@ -71,6 +71,26 @@ def get_error_mark_string():
     string=Fore.BLACK + Back.RED + "[ERR]" + Style.RESET_ALL + " "
     return string
 
+def get_balance_mark_string():
+    string=Fore.BLACK + Back.YELLOW + "[BAL]" + Style.RESET_ALL + " "
+    return string
+
+def get_missed_mark_string():
+    string=Fore.WHITE + Back.MAGENTA + "[MIS]" + Style.RESET_ALL + " "
+    return string
+
+def get_buy_mark_string():
+    string=Fore.WHITE + Back.GREEN + "[BUY]" + Style.RESET_ALL + " "
+    return string
+
+def get_sold_mark_string():
+    string=Fore.WHITE + Back.GREEN + "[SOL]" + Style.RESET_ALL + " "
+    return string
+
+def get_market_mark_string():
+    string=Fore.WHITE + Back.BLUE + "[MKT]" + Style.RESET_ALL + " "
+    return string
+
 def get_sma(symbol, timeframe, period):
     # Calculate simple moving average for a given symbol and timeframe
     klines = client.get_historical_klines(symbol, timeframe, "100 days ago")
@@ -131,7 +151,7 @@ timer=-trade_timer
 
 # Initialize Binance Client
 print(get_timestamp_string() + get_system_mark_string() + "Initialize Binance Client.")
-client = Client(settings['api_key'], settings['api_secert_key'])
+client = Client(settings['api_key'], settings['api_secert_key'],  tld=settings['tld'])
 
 while True:
     try:
@@ -169,7 +189,7 @@ while True:
 
             # Initialize Binance Client
             print(get_timestamp_string() + get_system_mark_string() + "Initialize Binance Client.")
-            client = Client(settings['api_key'], settings['api_secert_key'])
+            client = Client(settings['api_key'], settings['api_secert_key'],  tld=settings['tld'])
 
         #=============================================
         # Check Network Connection
@@ -237,7 +257,7 @@ while True:
                     else:
                         output+=Fore.RED + "DISABLED" + Style.RESET_ALL
                     
-                    print(get_timestamp_string() + Fore.WHITE + Back.BLUE + "[MKT]" + Style.RESET_ALL + f" {tp['coin']}/{tp['fiat']} Price: {price} {output}\n" + " " * 26 + f"MA({sma_short_period}):{sma_short} MA({sma_medium_period}):{sma_medium} MA({sma_long_period}):{sma_long}\n" + " " * 26 + f"Sell: {sell_price}  Buy: {buy_price}")
+                    print(get_timestamp_string() + Fore.WHITE + get_market_mark_string() + f"{tp['coin']}/{tp['fiat']} Price: {price} {output}\n" + " " * 26 + f"MA({sma_short_period}):{sma_short} MA({sma_medium_period}):{sma_medium} MA({sma_long_period}):{sma_long}\n" + " " * 26 + f"Sell: {sell_price}  Buy: {buy_price}")
 
                 # Start trading
                 if tp['trade_enable']:
@@ -273,7 +293,7 @@ while True:
 
                                 if settings['show_trades']:
                                     # Creat output string
-                                    output = get_timestamp_string() + Fore.WHITE + Back.GREEN + "[BUY]" + Style.RESET_ALL + f" {order['executedQty']} {tp['coin']} at {price} {tp['fiat']}"
+                                    output = get_timestamp_string() + get_buy_mark_string() + f"{order['executedQty']} {tp['coin']} at {price} {tp['fiat']}"
                                     # Add to output strings
                                     print(output)
                                 # Log output to file
@@ -294,7 +314,7 @@ while True:
                             else:
                                 if settings['show_trades']:
                                     # Creat output string
-                                    output = get_timestamp_string() + Fore.WHITE + Back.MAGENTA + "[MIS]" + Style.RESET_ALL + f" Insufficient {tp['fiat']} For {tp['coin']} Buy!"
+                                    output = get_timestamp_string() + get_missed_mark_string() + f"Insufficient {tp['fiat']} For {tp['coin']} Buy!"
                                     # Add to output strings
                                     print(output)
                     
@@ -334,7 +354,7 @@ while True:
 
                                 if settings['show_trades']:
                                     # Creat output string
-                                    output = get_timestamp_string() + Fore.WHITE + Back.GREEN + "[SOL]" + Style.RESET_ALL + f" {order['executedQty']} {tp['coin']} at {price} {tp['fiat']}"
+                                    output = get_timestamp_string() + get_sold_mark_string() + f"{order['executedQty']} {tp['coin']} at {price} {tp['fiat']}"
                                     print(output)
                                 # Log output to file
                                 log_to_file(settings['sales_log_file'],get_timestamp_string() + f"[SOLD] {order['executedQty']} {tp['coin']} at {price} {tp['fiat']}\n")
@@ -347,7 +367,7 @@ while True:
                             else:
                                 if settings['show_trades']:
                                     # Creat output string
-                                    output = get_timestamp_string() + Fore.WHITE + Back.MAGENTA + "[MIS]" + Style.RESET_ALL + f" Insufficient {tp['coin']} For {tp['fiat']} Sale!"
+                                    output = get_timestamp_string() + get_missed_mark_string() + f"Insufficient {tp['coin']} For {tp['fiat']} Sale!"
                                     # Add to output strings
                                     print(output)
 
@@ -370,10 +390,10 @@ while True:
                     # Add to output strings
                     if holdings.find(tp['fiat'])==-1:
                         if float(fiat_balance['free']) > 0:
-                            holdings+=get_timestamp_string() + Fore.BLACK + Back.YELLOW + f"[BAL]" + Style.RESET_ALL + f" {tp['fiat']} {fiat_balance['free']}\n"
+                            holdings+=get_timestamp_string() + get_balance_mark_string() + f"{tp['fiat']} {fiat_balance['free']}\n"
                     if holdings.find(tp['coin'])==-1:
                         if float(coin_balance['free']) > 0:
-                            holdings+=get_timestamp_string() + Fore.BLACK + Back.YELLOW + f"[BAL]" + Style.RESET_ALL + f" {tp['coin']} {coin_balance['free']}\n"
+                            holdings+=get_timestamp_string() + get_balance_mark_string() + f"{tp['coin']} {coin_balance['free']}\n"
 
                 # Print the output
                 print(holdings.rstrip("\n"))
