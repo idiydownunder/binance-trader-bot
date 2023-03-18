@@ -30,6 +30,7 @@ from binance.exceptions import BinanceAPIException
 CONFIG_FILE = 'config.json'
 PRICE_LIST = 'price_guard.json'
 ASCII_LOGO=Fore.YELLOW + "__________.__\n\______   \__| ____ _____    ____   ____  ____\n |    |  _/  |/    \\\\__  \  /    \_/ ___\/ __ \\\n |    |   \  |   |  \/ __ \|   |  \  \__\  ___/\n |______  /__|___|  (____  /___|  /\___  >___  >\n        \/        \/     \/     \/     \/    \/" + Style.RESET_ALL + Fore.GREEN + "\n               _____            _           ___      _\n              |_   _| _ __ _ __| |___ _ _  | _ ) ___| |_\n                | || '_/ _` / _` / -_) '_| | _ \/ _ \  _|\n                |_||_| \__,_\__,_\___|_|   |___/\___/\__|\n\n" + Style.RESET_ALL
+NET_TIMER=30
 
 #=============================================
 # Define timeframe
@@ -148,6 +149,7 @@ if (settings['sma_medium_period']>settings['sma_short_period']) & (settings['sma
 if settings['trade_timer_minutes']>=1:
     trade_timer = settings['trade_timer_minutes']*60
 timer=-trade_timer
+network_timer=-NET_TIMER
 
 # Initialize Binance Client
 print(get_timestamp_string() + get_system_mark_string() + "Initialize Binance Client.")
@@ -194,10 +196,12 @@ while True:
         #=============================================
         # Check Network Connection
         #=============================================
-        if format(client.ping()) == "{}":
-            if connection_retry_count>0:
-                print(get_timestamp_string() + get_system_mark_string() + "Network Connection Good.")
-            connection_retry_count=0
+        if time.time()-network_timer>=NET_TIMER:
+            network_timer=time.time()
+            if format(client.ping()) == "{}":
+                if connection_retry_count>0:
+                    print(get_timestamp_string() + get_system_mark_string() + "Network Connection Good.")
+                connection_retry_count=0
 
         if time.time()-timer>=trade_timer: # Check The Timer
             timer=time.time() # Set The Timer
@@ -273,11 +277,11 @@ while True:
                             do_buy=True
                         if do_buy==True:
                             # Check if we have any position to buy
-                            if float(fiat_balance['free'])-tp['fiat_hold_amount'] >= float(coin_info['filters'][2]['minNotional']):  # minimum order amount on Binance is 10 AUD
+                            if float(fiat_balance['free'])-tp['fiat_hold_amount'] >= float(coin_info['filters'][2]['minNotional']):  # Binance has a minimum order amount.
                                 if tp['trade_buy_adjustment']>1:
                                     qty=math.floor(float(coin_info['filters'][2]['minNotional']) * tp['trade_buy_adjustment'])  # Add a % to min trade amount for buy. 
                                 elif (tp['trade_buy_adjustment']<1) & (tp['trade_buy_adjustment']>0):
-                                    qty=math.floor(float(coin_info['filters'][2]['minNotional']) / tp['trade_buy_adjustment'])  # Add a % to min trade amount for buy.
+                                    qty=math.floor((float(coin_info['filters'][2]['minNotional']) + (float(coin_info['filters'][2]['minNotional'])*tp['trade_buy_adjustment'])))  # Add a % to min trade amount for buy.
                                 elif tp['trade_buy_adjustment']==1:
                                     qty=float(fiat_balance['free'])-tp['fiat_hold_amount'] # Use all avalibal balance
                                 elif tp['trade_buy_adjustment']==0:
@@ -286,6 +290,9 @@ while True:
                                     qty=float(coin_info['filters'][2]['minNotional']) # Use min trade amount just incase of bad logic above
 
                                 if qty>float(fiat_balance['free'])-tp['fiat_hold_amount']:
+                                    qty=float(coin_info['filters'][2]['minNotional']) # Use min trade amount
+
+                                if qty<float(coin_info['filters'][2]['minNotional']):
                                     qty=float(coin_info['filters'][2]['minNotional']) # Use min trade amount
                                 
                                 # Make the trade
@@ -330,24 +337,24 @@ while True:
                             do_sell=True
                         if do_sell:
                             # Check if we have any position to sell
-                            if float(coin_balance['free'])-tp['coin_hold_amount'] >= price*float(coin_info['filters'][2]['minNotional']):
+                            if (float(coin_balance['free'])-tp['coin_hold_amount']) >= float(coin_info['filters'][2]['minNotional'])/price:  # Binance has a minimum order amount.
 
                                 if tp['trade_sell_adjustment']>1:
-                                    qty=math.floor(price*float(coin_info['filters'][2]['minNotional']) / tp['trade_sell_adjustment'])  # Add a % to min trade amount for buy. 
+                                    qty=math.floor(float(coin_info['filters'][2]['minNotional']) * tp['trade_sell_adjustment'] / price)  # Add a % to minimum trade amount for sell. 
                                 elif (tp['trade_sell_adjustment']<1) & (tp['trade_sell_adjustment']>0):
-                                    qty=math.floor(price*float(coin_info['filters'][2]['minNotional']) * tp['trade_sell_adjustment'])  # Add a % to min trade amount for buy.
-                                elif tp['trade_sell_adjustment']==1:
+                                    qty=math.floor((float(coin_info['filters'][2]['minNotional']) + (float(coin_info['filters'][2]['minNotional'])*tp['trade_sell_adjustment'])) / price)  # Add a % to minimum trade amount for sell.
+                                elif tp['trade_sell_adjustment']==1: 
                                     qty=float(coin_balance['free'])-tp['coin_hold_amount'] # Use all avalibal balance
                                 elif tp['trade_sell_adjustment']==0:
-                                    qty=price*float(coin_info['filters'][2]['minNotional']) # Use min trade amount
+                                    qty=float(coin_info['filters'][2]['minNotional'])/price # Use minimum trade amount
                                 else:
-                                    qty=price*float(coin_info['filters'][2]['minNotional']) # Use min trade amount just incase of bad logic above
+                                    qty=float(coin_info['filters'][2]['minNotional'])/price # Use minimum trade amount just incase of bad logic above
 
-                                if qty>price*(float(coin_balance['free'])-tp['coin_hold_amount']):
-                                    qty=price*float(coin_info['filters'][2]['minNotional']) # Use min trade amount just incase of bad logic above (shouldn't happen!)
+                                if qty>(float(coin_balance['free'])-tp['coin_hold_amount']):
+                                    qty=float(coin_info['filters'][2]['minNotional'])/price # Use minimum trade amount
 
-                                if qty<price*float(coin_info['filters'][2]['minNotional']):
-                                    qty=price*float(coin_info['filters'][2]['minNotional']) # Use min trade amount
+                                if qty<float(coin_info['filters'][2]['minNotional'])/price:
+                                    qty=float(coin_info['filters'][2]['minNotional'])/price # Use minimum trade amount
                                     
                                 # Make the trade
                                 order = make_trade(symbol,Client.SIDE_SELL,Client.ORDER_TYPE_MARKET,qty)
@@ -422,7 +429,7 @@ while True:
             else:
                 print(get_timestamp_string() + get_error_mark_string() + f"Retrying Network Connection. Attempt: {connection_retry_count}")
                 connection_retry_count+=1
-            time.sleep(30)
+            time.sleep(NET_TIMER)
         else:
             output=f"Unknown Error: {e}"
             # Print the output
