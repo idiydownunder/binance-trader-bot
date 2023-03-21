@@ -20,6 +20,7 @@ import time
 import datetime
 import math
 import json
+import decimal
 from colorama import Fore, Back, Style
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
@@ -104,6 +105,26 @@ def log_to_file(file,log_data):
     f = open(file, "a")
     f.write(log_data)
     f.close()
+
+def check_decimals(val):
+    #info = client.get_symbol_info(symbol)
+    #val = info['filters'][2]['stepSize']
+    decimal = 0
+    is_dec = False
+    for c in val:
+        if is_dec is True:
+            decimal += 1
+        if c == '1':
+            break
+        if c == '.':
+            is_dec = True
+    return decimal
+
+def round_down(value, decimals):
+    with decimal.localcontext() as ctx:
+        d = decimal.Decimal(value)
+        ctx.rounding = decimal.ROUND_DOWN
+        return round(d, decimals)
 
 def make_trade(coin_pair,buy_sell,order_type,order_qty):
     # Create an order
@@ -226,6 +247,7 @@ while True:
                 fiat_balance = client.get_asset_balance(tp['fiat'])
                 coin_balance = client.get_asset_balance(tp['coin'])
                 coin_info = client.get_symbol_info(symbol)
+                dec_place=check_decimals(coin_info['filters'][1]['stepSize'])
 
                 # Make Price adjustments
                 if tp['trade_buy_price_adjustment']!=0:
@@ -355,9 +377,16 @@ while True:
 
                                 if qty<float(coin_info['filters'][2]['minNotional'])/price:
                                     qty=float(coin_info['filters'][2]['minNotional'])/price # Use minimum trade amount
-                                    
+                                
+                                # Fix API MIN_NOTIONAL Error
+                                qty=round_down(float(qty), dec_place)
+
+                                output = get_timestamp_string() + get_missed_mark_string() + f"Sale amount {tp['coin']}: {qty}" # Debbuging Line
+                                print(output) # Debbuging Line
+
                                 # Make the trade
                                 order = make_trade(symbol,Client.SIDE_SELL,Client.ORDER_TYPE_MARKET,qty)
+                                
 
                                 if settings['show_trades']:
                                     # Creat output string
