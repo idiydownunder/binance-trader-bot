@@ -50,16 +50,17 @@ cd binance-trader-bot
 python3 -m pip install -r requirements.txt
 ```
 
-6. After you have run the above commands you should be all set to run the bot, just remember you will need to edit the config.json file with your API key and trading pairs you wish to use first. See configuration sections below.
+6. After you have run the above commands you should be all set to run the bot, just remember you will need to edit the config.json file with the trading pairs you wish to use first. See configuration section below.
 
 7. Run The Bot
 
 ```BASH
 python3 traderbot.py
 ```
+8. The first time you run the bot you will be asked for your API key and secret key, See Getting API Keys section below.
 
 ### Configuration (config.json)
-The config.json is where you will need to add your API Keys and other data relating to which markets you wish to trade on, as well as defining certain things about the trading behavior on those markets. The bot will also monitor this file for changes and will apply the changes dynamically at run time, so you don't need to close and restart the bot for setting changes to take place.
+The config.json is where you will need to add your data relating to which markets you wish to trade on, as well as defining certain things about the trading behavior on those markets. The bot will also monitor this file for changes and will apply the changes dynamically at run time, so you don't need to close and restart the bot for setting changes to take place.
 
 To get started you will need to load the config.json file into your favorite text editor, nano, vi, whatever you like.
 
@@ -72,8 +73,6 @@ nano config.json
 This is what a basic default config.json file looks like;
 ```JSON
 {
-    "api_key":"<your-api-key>",
-    "api_secert_key":"<your-api-secert-key>",
     "tld":"com",
     "sma_short_period":7,
     "sma_medium_period":25,
@@ -130,7 +129,6 @@ This is what a basic default config.json file looks like;
     ]
 }
 ```
-**api_key & api_secert_key** You need to replace *&#60;your-api-key&#62;* and *&#60;your-api-secert-key&#62;* with your API Key and Secret Key respectively. These are provided from Binance and need to be set in order for the bot to be able to trade. See Getting API Keys for more information.
 
 **tld** If you are interacting with a regional version of Binance which has a different Top Level Domain then you will need to pass this when using the bot for it to work properly, for example if the website you login to is 'binance.com' you would set this to 'com' or if you use 'binance.us' you would set this to 'us'.
 
@@ -171,9 +169,9 @@ This is what a basic default config.json file looks like;
 
 **trade_buy_enable & trade_sell_enable** Setting these will either enable or disable buying or selling. As long as "trade_enable": true these settings are in effect. Useful if you wish to liquidate or accrue certain currencies.
 
-**trade_buy_adjustment & trade_sell_adjustment** Setting these values will determine the amount at which you buy and sell at. These work like a multiplier as Binance has a minimum trade amount. Because they work like a multiplier two numbers are reserved as they would mess with the calculations.<br>0 = Minimum Amount<br>1 = Maximum Amount<br>values > 1 = Minimum Amount X Adjustment Value<br>values < 1 & values > 0 = Minimum Amount / Adjustment Value
+**trade_buy_adjustment & trade_sell_adjustment** Setting these values will determine the amount at which you buy and sell at. These work like a multiplier as Binance has a minimum trade amount. Because they work like a multiplier two numbers are reserved as they would mess with the calculations.<br>0 = Minimum Buy/Sell Amount<br>1 = All Available Balance<br>values > 1 = Minimum Buy/Sell Amount X Adjustment Value<br>values < 1 & values > 0 = All Available Balance X Adjustment Value (works like a percent of)<br>If the calculated adjusted value can not be used the minimum amount will be used instead.
 
-**trade_buy_price_adjustment & trade_sell_price_adjustment** These values get +/- to the Long Moving Average to help reduce noise and small gains. For example if the MA was .5430 and the Current Price is .5432 it would not be a very profitable trade. By adding a small adjustment we can better see how far away the current price is from the moving average. The trick here is to have it set high enough to reduce noise when the price is close to the average as well as making good gains, but not so high that we never make any trades
+**trade_buy_price_adjustment & trade_sell_price_adjustment** These values get +/- to the Long Moving Average to help reduce noise and small gains. For example if the MA was .5430 and the Current Price is .5432 it would not be a very profitable trade. By adding a small adjustment we can better see how far away the current price is from the moving average. The trick here is to have it set high enough to reduce noise when the price is close to the average as well as making good gains, but not so high that we never make any trades. If set to 0 the price will only need to be higher than the Short Moving Average to trigger a trade.
 
 ### Configuration (traderbot.py)
 While configuring the traderbot.py is not mandatory and there is only one option, I would only recommend this for advanced traders, but I'll cover it here anyway.

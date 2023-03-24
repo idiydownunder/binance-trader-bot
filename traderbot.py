@@ -22,6 +22,8 @@ import math
 import json
 import decimal
 from colorama import Fore, Back, Style
+from dotenv import load_dotenv
+from dotenv import set_key
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
 
@@ -29,7 +31,8 @@ from binance.exceptions import BinanceAPIException
 # Set some 'constants'
 #=============================================
 CONFIG_FILE = 'config.json'
-PRICE_LIST = 'price_guard.json'
+PRICE_LIST_FILE = 'price_guard.json'
+ENV_VAR_FILE = '.env'
 ASCII_LOGO=Fore.YELLOW + "__________.__\n\______   \__| ____ _____    ____   ____  ____\n |    |  _/  |/    \\\\__  \  /    \_/ ___\/ __ \\\n |    |   \  |   |  \/ __ \|   |  \  \__\  ___/\n |______  /__|___|  (____  /___|  /\___  >___  >\n        \/        \/     \/     \/     \/    \/" + Style.RESET_ALL + Fore.GREEN + "\n               _____            _           ___      _\n              |_   _| _ __ _ __| |___ _ _  | _ ) ___| |_\n                | || '_/ _` / _` / -_) '_| | _ \/ _ \  _|\n                |_||_| \__,_\__,_\___|_|   |___/\___/\__|\n\n" + Style.RESET_ALL
 NET_TIMER=30
 
@@ -77,8 +80,8 @@ def get_balance_mark_string():
     string=Fore.BLACK + Back.YELLOW + "[BAL]" + Style.RESET_ALL + " "
     return string
 
-def get_missed_mark_string():
-    string=Fore.WHITE + Back.MAGENTA + "[MIS]" + Style.RESET_ALL + " "
+def get_message_mark_string():
+    string=Fore.WHITE + Back.MAGENTA + "[MSG]" + Style.RESET_ALL + " "
     return string
 
 def get_buy_mark_string():
@@ -107,8 +110,7 @@ def log_to_file(file,log_data):
     f.close()
 
 def check_decimals(val):
-    #info = client.get_symbol_info(symbol)
-    #val = info['filters'][2]['stepSize']
+    # Check how many decimal places
     decimal = 0
     is_dec = False
     for c in val:
@@ -136,6 +138,20 @@ def make_trade(coin_pair,buy_sell,order_type,order_qty):
     )
     return trade
 
+def enter_api_key():
+    # Ask user for API Keys
+    api_key = input("Paste your API KEY here: ")
+    secret_key = input("Paste your SECRET KEY here: ")
+    # Save user data
+    set_key(ENV_VAR_FILE, 'API_KEY', api_key)
+    set_key(ENV_VAR_FILE, 'SECRET_KEY', secret_key)
+    # Load ready for use
+    load_dotenv()
+    # Clear the screen/terminal
+    os.system('cls' if os.name == 'nt' else 'clear')
+    # Display something nice
+    print(ASCII_LOGO)
+
 # Clear the screen/terminal
 os.system('cls' if os.name == 'nt' else 'clear')
 # Display something nice
@@ -143,7 +159,7 @@ print(ASCII_LOGO)
 
 # Error Checking
 if os.path.isfile(CONFIG_FILE):
-    # Load Config.json
+    # Load CONFIG_FILE
     with open(CONFIG_FILE) as f:
         settings = json.load(f)
         config_load_time=time.time()
@@ -152,13 +168,30 @@ else:
     sys.exit(f"ERROR: {CONFIG_FILE} Not Found! Terminating Program.")
     
 # Error Checking
-if os.path.isfile(PRICE_LIST):
-    # Load PRICE_LIST
-    with open(PRICE_LIST) as f:
+if os.path.isfile(PRICE_LIST_FILE):
+    # Load PRICE_LIST_FILE
+    with open(PRICE_LIST_FILE) as f:
         price_guard = json.load(f)
 else:
     # Handle Error
     price_guard={}
+
+# Error Checking
+if os.path.isfile(ENV_VAR_FILE):
+    # Load ENV_VAR_FILE
+    load_dotenv()
+else:
+    # Handle Error
+    enter_api_key()
+
+# Handle Command Line Arguments
+for arg in sys.argv[1:]:
+    if arg == '-api':
+        enter_api_key()
+
+# Get the API Keys
+api_key = os.getenv('API_KEY')
+secret_key = os.getenv('SECRET_KEY')
 
 # Set moving average periods
 if (settings['sma_medium_period']>settings['sma_short_period']) & (settings['sma_long_period']>settings['sma_medium_period']):
@@ -174,7 +207,7 @@ network_timer=-NET_TIMER
 
 # Initialize Binance Client
 print(get_timestamp_string() + get_system_mark_string() + "Initialize Binance Client.")
-client = Client(settings['api_key'], settings['api_secert_key'],  tld=settings['tld'])
+client = Client(api_key, secret_key,  tld=settings['tld'])
 
 while True:
     try:
@@ -212,7 +245,7 @@ while True:
 
             # Initialize Binance Client
             print(get_timestamp_string() + get_system_mark_string() + "Initialize Binance Client.")
-            client = Client(settings['api_key'], settings['api_secert_key'],  tld=settings['tld'])
+            client = Client(api_key, secret_key,  tld=settings['tld'])
 
         #=============================================
         # Check Network Connection
@@ -247,7 +280,12 @@ while True:
                 fiat_balance = client.get_asset_balance(tp['fiat'])
                 coin_balance = client.get_asset_balance(tp['coin'])
                 coin_info = client.get_symbol_info(symbol)
-                dec_place=check_decimals(coin_info['filters'][1]['stepSize'])
+                sell_dec_place=check_decimals(coin_info['filters'][1]['stepSize'])
+                buy_dec_place=check_decimals(coin_info['filters'][0]['tickSize'])
+                coin_maxQty=coin_info['filters'][4]['maxQty']
+                min_amount=coin_info['filters'][2]['minNotional']
+                fiat_available_amount=float(fiat_balance['free'])-tp['fiat_hold_amount']
+                coin_available_amount=float(coin_balance['free'])-tp['coin_hold_amount']
 
                 # Make Price adjustments
                 if tp['trade_buy_price_adjustment']!=0:
@@ -299,24 +337,30 @@ while True:
                             do_buy=True
                         if do_buy==True:
                             # Check if we have any position to buy
-                            if float(fiat_balance['free'])-tp['fiat_hold_amount'] >= float(coin_info['filters'][2]['minNotional']):  # Binance has a minimum order amount.
+                            if fiat_available_amount >= float(min_amount):  # Binance has a minimum order amount.
                                 if tp['trade_buy_adjustment']>1:
-                                    qty=math.floor(float(coin_info['filters'][2]['minNotional']) * tp['trade_buy_adjustment'])  # Add a % to min trade amount for buy. 
+                                    qty=math.floor(float(min_amount) * tp['trade_buy_adjustment'])  # Increase minimum buy amount by a multiplier. 
                                 elif (tp['trade_buy_adjustment']<1) & (tp['trade_buy_adjustment']>0):
-                                    qty=math.floor((float(coin_info['filters'][2]['minNotional']) + (float(coin_info['filters'][2]['minNotional'])*tp['trade_buy_adjustment'])))  # Add a % to min trade amount for buy.
+                                    qty=math.floor(fiat_available_amount*tp['trade_buy_adjustment'])  # Use a % of available for buy.
                                 elif tp['trade_buy_adjustment']==1:
-                                    qty=float(fiat_balance['free'])-tp['fiat_hold_amount'] # Use all avalibal balance
+                                    qty=fiat_available_amount # Use all available
                                 elif tp['trade_buy_adjustment']==0:
-                                    qty=float(coin_info['filters'][2]['minNotional']) # Use min trade amount
+                                    qty=float(min_amount) # Use minimum trade amount
                                 else:
-                                    qty=float(coin_info['filters'][2]['minNotional']) # Use min trade amount just incase of bad logic above
+                                    qty=float(min_amount) # Use minimum trade amount just incase of bad logic above
 
-                                if qty>float(fiat_balance['free'])-tp['fiat_hold_amount']:
-                                    qty=float(coin_info['filters'][2]['minNotional']) # Use min trade amount
+                                if qty>fiat_available_amount:
+                                    qty=float(min_amount) # Use min trade amount
 
-                                if qty<float(coin_info['filters'][2]['minNotional']):
-                                    qty=float(coin_info['filters'][2]['minNotional']) # Use min trade amount
+                                if qty<float(min_amount):
+                                    qty=float(min_amount) # Use min trade amount
                                 
+                                # Fix API Error
+                                qty=round_down(float(qty), buy_dec_place)
+
+                                output = get_timestamp_string() + get_message_mark_string() + f"Buy amount {tp['fiat']}: {qty} // Bal: {fiat_available_amount}" # Debbuging Line
+                                print(output) # Debbuging Line
+
                                 # Make the trade
                                 order = make_trade(symbol,Client.SIDE_BUY,Client.ORDER_TYPE_MARKET,qty)
 
@@ -343,7 +387,7 @@ while True:
                             else:
                                 if settings['show_trades']:
                                     # Creat output string
-                                    output = get_timestamp_string() + get_missed_mark_string() + f"Insufficient {tp['fiat']} For {tp['coin']} Buy!"
+                                    output = get_timestamp_string() + get_message_mark_string() + f"Insufficient {tp['fiat']} For {tp['coin']} Buy!"
                                     # Add to output strings
                                     print(output)
                     
@@ -359,29 +403,32 @@ while True:
                             do_sell=True
                         if do_sell:
                             # Check if we have any position to sell
-                            if (float(coin_balance['free'])-tp['coin_hold_amount']) >= float(coin_info['filters'][2]['minNotional'])/price:  # Binance has a minimum order amount.
+                            if (coin_available_amount) >= float(min_amount)/price:  # Binance has a minimum order amount.
 
                                 if tp['trade_sell_adjustment']>1:
-                                    qty=math.floor(float(coin_info['filters'][2]['minNotional']) * tp['trade_sell_adjustment'] / price)  # Add a % to minimum trade amount for sell. 
+                                    qty=math.floor(float(min_amount)/price * tp['trade_sell_adjustment'])  # Increase minimum sell amount by a multiplier. 
                                 elif (tp['trade_sell_adjustment']<1) & (tp['trade_sell_adjustment']>0):
-                                    qty=math.floor((float(coin_info['filters'][2]['minNotional']) + (float(coin_info['filters'][2]['minNotional'])*tp['trade_sell_adjustment'])) / price)  # Add a % to minimum trade amount for sell.
+                                    qty=math.floor(coin_available_amount * tp['trade_sell_adjustment'])  # Use a % of available for sell.
                                 elif tp['trade_sell_adjustment']==1: 
-                                    qty=float(coin_balance['free'])-tp['coin_hold_amount'] # Use all avalibal balance
+                                    qty=coin_available_amount # Use all available
                                 elif tp['trade_sell_adjustment']==0:
-                                    qty=float(coin_info['filters'][2]['minNotional'])/price # Use minimum trade amount
+                                    qty=float(min_amount)/price # Use minimum trade amount
                                 else:
-                                    qty=float(coin_info['filters'][2]['minNotional'])/price # Use minimum trade amount just incase of bad logic above
+                                    qty=float(min_amount)/price # Use minimum trade amount just incase of bad logic above
 
-                                if qty>(float(coin_balance['free'])-tp['coin_hold_amount']):
-                                    qty=float(coin_info['filters'][2]['minNotional'])/price # Use minimum trade amount
+                                if qty>(coin_available_amount):
+                                    qty=float(min_amount)/price # Use minimum trade amount
 
-                                if qty<float(coin_info['filters'][2]['minNotional'])/price:
-                                    qty=float(coin_info['filters'][2]['minNotional'])/price # Use minimum trade amount
+                                if qty>float(coin_maxQty):
+                                    qty=float(coin_maxQty) # Use Max Qty if exceeded
+
+                                if qty<float(min_amount)/price:
+                                    qty=float(min_amount)/price # Use minimum trade amount
                                 
-                                # Fix API MIN_NOTIONAL Error
-                                qty=round_down(float(qty), dec_place)
+                                # Fix API Error
+                                qty=round_down(float(qty), sell_dec_place)
 
-                                output = get_timestamp_string() + get_missed_mark_string() + f"Sale amount {tp['coin']}: {qty}" # Debbuging Line
+                                output = get_timestamp_string() + get_message_mark_string() + f"Sell amount {tp['coin']}: {qty} // Bal: {coin_available_amount}" # Debbuging Line
                                 print(output) # Debbuging Line
 
                                 # Make the trade
@@ -403,7 +450,7 @@ while True:
                             else:
                                 if settings['show_trades']:
                                     # Creat output string
-                                    output = get_timestamp_string() + get_missed_mark_string() + f"Insufficient {tp['coin']} For {tp['fiat']} Sale!"
+                                    output = get_timestamp_string() + get_message_mark_string() + f"Insufficient {tp['coin']} For {tp['fiat']} Sale!"
                                     # Add to output strings
                                     print(output)
 
@@ -411,7 +458,7 @@ while True:
             # Update Price Guard, If Needed
             #=============================================
             if price_guard_update:
-                with open(PRICE_LIST, 'w') as f:
+                with open(PRICE_LIST_FILE, 'w') as f:
                     json.dump(price_guard, f)     
 
             #=============================================
@@ -444,6 +491,7 @@ while True:
         print(get_timestamp_string() + get_error_mark_string() + output)
         # Log output to file
         log_to_file(settings['error_log_file'],get_timestamp_string() + output + "\n\n")
+        log_to_file(settings['error_log_file'],f"===== Var Dump =====\n{tp['coin']}/{tp['fiat']} Price: {price} Coin Bal: {coin_available_amount} Fiat Bal: {fiat_available_amount} Qty: {qty}\n\n")
 
     except KeyboardInterrupt:
         print("\n" + get_timestamp_string() + get_system_mark_string() + "Exiting Bot.")
